@@ -1,0 +1,9 @@
+# Snakemake
+.snakemake/
+benchmarks/
+data/
+logs/
+results/
+
+# Python
+__pycache__/
