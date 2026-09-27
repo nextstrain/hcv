@@ -81,7 +81,10 @@
           "description": "HCV subtype (subgenotype) of the nearest neighbour in the reference tree. The genotype is reported as the clade.",
           "hideInWeb": false
         }
-      ]
+      ],
+      "ref_nodes": {
+        "default": "__clade_founder__"
+      }
     }
   }
 }
