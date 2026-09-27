@@ -1,0 +1,87 @@
+{
+  "title": "Hepatitis C virus genotype reference tree",
+  "maintainers": [
+    {
+      "name": "Richard Neher",
+      "url": "https://neherlab.org"
+    },
+    {
+      "name": "Duyen Bao Le",
+      "url": "https://www.uniklinik-duesseldorf.de/institut-fuer-virologie/forschung/ag-timm/team"
+    },
+    {
+      "name": "Stefannie Hoffmann",
+      "url": "https://www.uniklinik-duesseldorf.de/institut-fuer-virologie/forschung/ag-timm/team"
+    },
+    {
+      "name": "Andreas Wagner",
+      "url": "https://www.uniklinik-duesseldorf.de/institut-fuer-virologie/forschung/ag-timm/team"
+    }
+  ],
+  "build_url": "https://github.com/nextstrain/hcv",
+  "colorings": [
+    {
+      "key": "clade_membership",
+      "title": "Genotype (tree)",
+      "type": "categorical"
+    },
+    {
+      "key": "genotype",
+      "title": "Genotype (annotated)",
+      "type": "categorical"
+    },
+    {
+      "key": "subtype",
+      "title": "Subtype (tree)",
+      "type": "categorical"
+    },
+    {
+      "key": "ncbi_genotype",
+      "title": "NCBI genotype",
+      "type": "categorical"
+    },
+    {
+      "key": "ncbi_subtype",
+      "title": "NCBI subtype",
+      "type": "categorical"
+    },
+    {
+      "key": "country",
+      "title": "Country",
+      "type": "categorical"
+    }
+  ],
+  "display_defaults": {
+    "color_by": "clade_membership",
+    "distance_measure": "div",
+    "branch_label": "clade"
+  },
+  "filters": [
+    "clade_membership",
+    "subtype",
+    "genotype",
+    "country"
+  ],
+  "metadata_columns": [
+    "ncbi_virus_name",
+    "date",
+    "length",
+    "url"
+  ],
+  "panels": [
+    "tree",
+    "entropy"
+  ],
+  "extensions": {
+    "nextclade": {
+      "clade_node_attrs": [
+        {
+          "name": "subtype",
+          "displayName": "Subtype",
+          "description": "HCV subtype (subgenotype) of the nearest neighbour in the reference tree. The genotype is reported as the clade.",
+          "hideInWeb": false
+        }
+      ]
+    }
+  }
+}

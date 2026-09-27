@@ -1,0 +1,12 @@
+# Accessions that are always included in the subsample (one per line).
+# Reference
+NC_038882
+# Minimizer references (one per genotype), see config.yml
+AF009606
+AB047639
+GU814263
+GU814265
+AF064490
+EU246939
+EF108306
+MH590698

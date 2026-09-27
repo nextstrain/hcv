@@ -1,0 +1,11 @@
+.snakemake/
+auspice/
+benchmarks/
+data/
+logs/
+results/
+dataset/
+test_output/
+
+# Python
+__pycache__/
