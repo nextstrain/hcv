@@ -20,7 +20,7 @@ Genotype and subtype are taken from the NCBI annotations (`ncbi_genotype`,
 1. Subsample near full length genomes (`subsample.min_length`) evenly across
    genotypes and subtypes (`augur filter --group-by genotype subtype --sequences-per-group`).
 2. Align the subsample with Nextclade and translate the CDSs.
-3. Mask the gappy regions listed in `mask_ranges`.
+3. Mask the gappy regions listed in `placementMaskRanges` of the pathogen.json.
 4. Build the tree (`augur tree`, midpoint rooted by `augur refine`), reconstruct
    ancestral sequences and mutations (`augur ancestral`, using the Nextclade
    translations) and export to `auspice/tree.json`.
@@ -57,15 +57,13 @@ snakemake --cores 8 results/aligned.fasta
     --alignment results/aligned.fasta \
     --max-gap-fraction 0.3 \
     --keep-ranges 0-336 \
-    --config defaults/config.yml \
     --pathogen-json defaults/pathogen.json
 ```
 
-This writes the ranges (0-based, end-exclusive) to `mask_ranges` in
-[defaults/config.yml][] and to `placementMaskRanges` in
-[defaults/pathogen.json][]. `--keep-ranges 0-336` keeps the 5'UTR in the
-placement mask. Run without `--config`/`--pathogen-json` to only print the
-ranges.
+This writes the ranges (0-based, end-exclusive) to `placementMaskRanges` in
+[defaults/pathogen.json][], which the workflow also uses for masking before
+tree building. `--keep-ranges 0-336` keeps the 5'UTR in the mask. Run without
+`--pathogen-json` to only print the ranges.
 
 ## Colors
 

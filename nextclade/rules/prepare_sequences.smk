@@ -177,16 +177,25 @@ rule align:
 
 
 rule mask_bed:
-    """Write the gappy regions to mask from the config as a BED file"""
+    """
+    Write the gappy regions to mask (`placementMaskRanges` in the
+    pathogen.json, 0-based, end-exclusive) as a BED file
+    """
+    input:
+        pathogen_json=config["files"]["pathogen_json"],
+        reference=config["files"]["reference"],
     output:
         bed="results/mask.bed",
-    params:
-        ranges=config["mask_ranges"],
-        seq_id="NC_038882.1",
     run:
+        import json
+        from Bio import SeqIO
+
+        seq_id = SeqIO.read(input.reference, "fasta").id
+        with open(input.pathogen_json) as fh:
+            ranges = json.load(fh).get("placementMaskRanges", [])
         with open(output.bed, "w") as fh:
-            for r in params.ranges:
-                fh.write(f"{params.seq_id}\t{r['begin']}\t{r['end']}\n")
+            for r in ranges:
+                fh.write(f"{seq_id}\t{r['begin']}\t{r['end']}\n")
 
 
 rule mask:

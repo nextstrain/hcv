@@ -5,21 +5,18 @@ Identify regions of a reference-based alignment (e.g. the output of
 sequences have a gap.
 
 This is used during set-up of the dataset to determine the regions that are
-masked before tree building (`mask_ranges` in config.yml) and ignored during
-placement (`placementMaskRanges` in pathogen.json). It is not part of the
-workflow itself.
+ignored during placement and masked before tree building (both from
+`placementMaskRanges` in pathogen.json). It is not part of the workflow itself.
 
 Ranges are reported in 0-based, end-exclusive reference coordinates, which is
 the convention of both `placementMaskRanges` and BED files.
 
-With --config and/or --pathogen-json, the ranges are written into the
-respective files, replacing `mask_ranges` / `placementMaskRanges`. Otherwise
-they are printed to STDOUT.
+With --pathogen-json, the ranges are written into the pathogen.json, replacing
+`placementMaskRanges`. Otherwise they are printed to STDOUT.
 """
 
 import argparse
 import json
-import re
 import sys
 
 import numpy as np
@@ -39,7 +36,6 @@ def parse_args():
         help="Only report ranges of at least this length after merging (default: %(default)s)")
     parser.add_argument("--keep-ranges", type=str, nargs="*", default=[],
         help="Additional ranges to always include, as BEGIN-END (0-based, end-exclusive), e.g. 0-336 for the 5'UTR")
-    parser.add_argument("--config", help="config.yml in which to replace `mask_ranges`")
     parser.add_argument("--pathogen-json", help="pathogen.json in which to replace `placementMaskRanges`")
     return parser.parse_args()
 
@@ -76,19 +72,6 @@ def merge_ranges(ranges, distance):
     return merged
 
 
-def write_config(path, ranges):
-    """Replace the `mask_ranges` entry of the YAML config, keeping comments and formatting elsewhere."""
-    with open(path) as fh:
-        text = fh.read()
-    block = "mask_ranges:\n" + "".join(f"  - {{begin: {b}, end: {e}}}\n" for b, e in ranges) if ranges else "mask_ranges: []\n"
-    pattern = re.compile(r"^mask_ranges:.*?(?=^\S|\Z)", re.MULTILINE | re.DOTALL)
-    if not pattern.search(text):
-        sys.exit(f"ERROR: no `mask_ranges` entry found in {path}")
-    text = pattern.sub(lambda _: block + "\n", text, count=1)
-    with open(path, "w") as fh:
-        fh.write(text)
-
-
 def write_pathogen_json(path, ranges):
     with open(path) as fh:
         pathogen = json.load(fh)
@@ -112,13 +95,10 @@ def main():
     for b, e in ranges:
         print(f"  {b}-{e}\tlength {e - b}\tmean gap fraction {fractions[b:e].mean():.2f}", file=sys.stderr)
 
-    if args.config:
-        write_config(args.config, ranges)
-        print(f"Wrote mask_ranges to {args.config}", file=sys.stderr)
     if args.pathogen_json:
         write_pathogen_json(args.pathogen_json, ranges)
         print(f"Wrote placementMaskRanges to {args.pathogen_json}", file=sys.stderr)
-    if not (args.config or args.pathogen_json):
+    else:
         json.dump([{"begin": b, "end": e} for b, e in ranges], sys.stdout, indent=2)
         print()
 
