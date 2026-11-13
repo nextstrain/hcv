@@ -4,7 +4,7 @@
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | name              | Hepatitis C virus (all genotypes)                                                                                                                                                                                    |
 | authors           | [Richard Neher](https://neherlab.org), [Duyen Bao Le](https://www.uniklinik-duesseldorf.de/institut-fuer-virologie/forschung/ag-timm/team), [Stefannie Hoffmann](https://www.uniklinik-duesseldorf.de/institut-fuer-virologie/forschung/ag-timm/team), [Andreas Wagner](https://www.uniklinik-duesseldorf.de/institut-fuer-virologie/forschung/ag-timm/team)                                                                    |
-| reference         | `NC_038882.1` (isolate H77, genotype 1a)                                                                                                                                                                             |
+| reference         | `NC_004102.1` (isolate H77, genotype 1a)                                                                                                                                                                             |
 | workflow          | TODO                                                                                                                                                                                                                 |
 | path              | TODO                                                                                                                                                                                                                 |
 | clade definitions | HCV genotypes and subtypes following the ICTV consensus classification ([Smith et al., 2014](https://doi.org/10.1002/hep.26744); genotype 8: [Borgia et al., 2018](https://doi.org/10.1093/infdis/jiy401))          |
@@ -13,7 +13,7 @@
 
 This dataset assigns genotypes and subtypes to hepatitis C virus (HCV)
 sequences of all known genotypes (1–8), and reports mutations relative to the
-H77 reference (`NC_038882.1`, genotype 1a).
+H77 reference (`NC_004102.1`, genotype 1a).
 
 HCV is highly diverse: genotypes differ by more than 30% and subtypes by
 15–30% at the nucleotide level. Since all sequences are aligned against a
@@ -28,7 +28,7 @@ the complete coding region. TODO: describe performance on partial sequences
 
 ## Reference sequence and reference tree
 
-The reference sequence is the RefSeq `NC_038882.1` of isolate H77 (genotype
+The reference sequence is the RefSeq `NC_004102.1` of isolate H77 (genotype
 1a). Amino acid mutations are reported for the mature proteins core, E1, E2,
 p7, NS2, NS3, NS4A, NS4B, NS5A and NS5B.
 

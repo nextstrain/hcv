@@ -69,17 +69,17 @@ ranges.
 
 ## Colors
 
-[defaults/colors.tsv][] is generated with
+The `colors` rule generates `results/colors.tsv` with
+[scripts/generate-colors.py][] from the subtypes in the annotated metadata
+(`subtype` from the reference alignment/manual annotations and
+`ncbi_subtype`), so every subtype in the tree gets a color.
 
-```
-./scripts/generate-colors.py \
-    --metadata ../ingest/results/metadata.tsv \
-    --output defaults/colors.tsv
-```
-
-Each genotype has a distinct base color; its subtypes are variations in hue
-(within a bracket around the genotype hue) and lightness. The subtypes are
-taken from the metadata, so regenerate the file when new subtypes are added.
+Each genotype has a distinct base color. Its subtypes are picked from a region
+of hue, lightness and chroma around the genotype color by farthest point
+sampling, so that subtypes within a genotype are as distinguishable as
+possible (the first subtype gets the genotype color, and 1a, 1b, ... get the
+most distinct colors). With more than 30 subtypes of genotype 6 in a small
+region of the sRGB gamut, some of its subtypes will still look similar.
 
 ## Notes
 
@@ -90,8 +90,8 @@ taken from the metadata, so regenerate the file when new subtypes are added.
   `augur` reads gene names from `gene` rows only.
 
 [defaults/annotation.gff]: ./defaults/annotation.gff
-[defaults/colors.tsv]: ./defaults/colors.tsv
 [defaults/config.yml]: ./defaults/config.yml
+[scripts/generate-colors.py]: ./scripts/generate-colors.py
 [defaults/genotype_annotations.tsv]: ./defaults/genotype_annotations.tsv
 [defaults/include.txt]: ./defaults/include.txt
 [defaults/pathogen.json]: ./defaults/pathogen.json

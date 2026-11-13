@@ -16,6 +16,54 @@ OUTPUTS:
 
 """
 
+rule parse_reference_alignment:
+    """
+    Extract genotype/subtype assignments from the ICTV reference alignment
+    (headers like `1a_AF009606` or `1_AJ851228` for unassigned subtypes),
+    merge them with the manual annotations and add the reference accessions
+    to the include list.
+    """
+    input:
+        alignment=config["files"]["reference_alignment"],
+        annotations=config["files"]["genotype_annotations"],
+        include=config["files"]["include"],
+    output:
+        annotations="results/genotype_annotations.tsv",
+        include="results/include.txt",
+    run:
+        import re
+        import pandas as pd
+        from Bio import SeqIO
+
+        records = []
+        for record in SeqIO.parse(input.alignment, "fasta"):
+            match = re.fullmatch(r"(\d+)([a-z]*)\??_(\S+)", record.id)
+            if match is None:
+                print(f"WARNING: skipping unparsable reference header {record.id!r}")
+                continue
+            genotype, subtype_letters, accession = match.groups()
+            records.append(
+                {
+                    "accession": accession,
+                    "genotype": genotype,
+                    # genotype-only labels (e.g. `1_AJ851228`) have no subtype
+                    "subtype": genotype + subtype_letters if subtype_letters else "",
+                }
+            )
+        reference_df = pd.DataFrame(records, columns=["accession", "genotype", "subtype"])
+        reference_df = reference_df.replace("", None)
+
+        # Non-empty manual annotations take precedence over the reference alignment
+        manual_df = pd.read_csv(input.annotations, sep="\t", dtype=str).set_index("accession")
+        annotations_df = manual_df.combine_first(reference_df.set_index("accession"))
+        annotations_df.to_csv(output.annotations, sep="\t", columns=["genotype", "subtype"])
+
+        with open(input.include) as fh:
+            include = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+        with open(output.include, "w") as fh:
+            for accession in dict.fromkeys(include + list(reference_df["accession"])):
+                fh.write(f"{accession}\n")
+
 
 rule annotate_genotypes:
     """
@@ -24,7 +72,7 @@ rule annotate_genotypes:
     """
     input:
         metadata=config["files"]["metadata"],
-        annotations=config["files"]["genotype_annotations"],
+        annotations="results/genotype_annotations.tsv",
     output:
         metadata="data/metadata.tsv",
     params:
@@ -56,7 +104,7 @@ rule subsample:
     input:
         metadata="data/metadata.tsv",
         sequences=config["files"]["sequences"],
-        include=config["files"]["include"],
+        include="results/include.txt",
         exclude=config["files"]["exclude"],
     output:
         sequences="results/subsampled.fasta",

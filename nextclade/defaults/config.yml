@@ -17,12 +17,11 @@ files:
   pathogen_json: "defaults/pathogen.json"
   # Manual genotype/subtype annotations that augment/override the NCBI ones
   genotype_annotations: "defaults/genotype_annotations.tsv"
+  reference_alignment: "reference_alignments/Updated-alignment-(FASTA)-of-HCV-genotypes-and-subtypes-09.03.22.FST"
   # Accessions that are always included/excluded in the subsample
   include: "defaults/include.txt"
   exclude: "defaults/exclude.txt"
   auspice_config: "defaults/auspice_config.json"
-  # Genotype/subtype colors, generated with scripts/generate-colors.py
-  colors: "defaults/colors.tsv"
   # README and CHANGELOG of the Nextclade dataset
   dataset_readme: "defaults/README.md"
   dataset_changelog: "defaults/CHANGELOG.md"
@@ -78,3 +77,5 @@ assign_clades:
 
 export:
   metadata_columns: ["genotype", "subtype", "ncbi_genotype", "ncbi_subtype", "ncbi_virus_name", "country", "date", "length", "url"]
+  # Categorical columns exported as strings (augur would otherwise export e.g. genotype 1 as an integer)
+  string_columns: ["genotype", "subtype", "ncbi_genotype", "ncbi_subtype"]

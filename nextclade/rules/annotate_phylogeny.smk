@@ -35,6 +35,7 @@ rule ancestral:
             --alignment {input.alignment:q} \
             --root-sequence {input.reference:q} \
             --annotation {input.annotation:q} \
+            --use-nextclade-gff-style \
             --genes {params.genes:q} \
             --translations {params.translations:q} \
             --inference {params.inference:q} \

@@ -2,16 +2,20 @@
 """
 Generate an Auspice colors TSV for HCV genotypes and subtypes.
 
-Each genotype is assigned a distinct base hue. Subtypes of a genotype get hues
-within a bracket around the genotype's hue, alternating in lightness so that
-neighbouring subtypes remain distinguishable. Colors are constructed in OKLCH
-(perceptually uniform lightness/chroma/hue) and converted to sRGB, reducing
-chroma where needed to stay within the sRGB gamut.
+Each genotype is assigned a distinct base hue. Subtypes of a genotype are
+picked from a region of OKLCH space (perceptually uniform lightness/chroma/hue)
+around the genotype color: hues between the genotype's hue and part of the way
+to its neighbouring genotype hues (more for genotypes with more subtypes), and
+a range of lightness and chroma. Colors are
+picked greedily such that each new subtype color is as far as possible from the
+colors already picked for the genotype (farthest point sampling), starting with
+the genotype color itself, while keeping a minimal distance to the colors of
+other genotypes. The first subtypes (e.g. 1a, 1b, ...) thus get the most
+distinct colors. Genotypes pick their colors in turns, so adding a subtype
+can shift the colors of subtypes of other genotypes that sort after it.
 
 Subtypes are read from the given metadata column(s), so the scale covers all
-subtypes present in the data, e.g. the ingest output. Colors for a given set
-of subtypes are deterministic, but adding a subtype to a genotype shifts the
-hues of the other subtypes of that genotype.
+subtypes present in the data.
 
 The same colors are written for each of the given genotype and subtype traits
 (e.g. both `genotype` and `ncbi_genotype`).
@@ -42,19 +46,17 @@ GENOTYPE_COLORS = {
 }
 RECOMBINANT_COLOR = "#8c8c8c"
 
-# Subtypes: hues are spread evenly within a bracket of at most +/- HUE_BRACKET
-# around the genotype hue (narrower for genotypes with close neighbours),
-# and neighbouring subtypes are offset in lightness from the genotype color,
-# cycling through SUBTYPE_LIGHTNESS_OFFSETS (ordered such that consecutive
-# subtypes differ by >= 0.16 in lightness).
-HUE_BRACKET = 16
-SUBTYPE_LIGHTNESS_OFFSETS = [-0.16, 0.0, 0.16, -0.08, 0.08]
-SUBTYPE_LIGHTNESS_RANGE = (0.38, 0.85)
+# Subtype colors are picked within +/- HUE_BRACKET (at most) around the genotype
+# hue. The hue gap to a neighbouring genotype is split in proportion to the
+# number of subtypes of the two genotypes (bounded by HUE_SPLIT_BOUNDS),
+# leaving a margin of HUE_MARGIN.
+HUE_BRACKET = 40
+HUE_SPLIT_BOUNDS = (0.3, 0.7)
+HUE_MARGIN = 3
+SUBTYPE_LIGHTNESS_RANGE = (0.35, 0.85)
+SUBTYPE_CHROMA_LEVELS = (0.07, 0.10, 0.13, 0.16)
 # Minimal OKLab distance (x100) of a subtype color to the colors of other genotypes
-MIN_DELTA_E_OTHER_GENOTYPE = 10
-# Minimal OKLab distance (x100) between consecutive subtypes of a genotype
-MIN_DELTA_E_SIBLING = 10
-
+MIN_DELTA_E_OTHER_GENOTYPE = 6
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -120,18 +122,25 @@ def read_subtypes(metadata, columns):
     return sorted(subtypes, key=subtype_sort_key)
 
 
-def hue_bracket(genotype):
+def hue_range(genotype, counts):
     """
-    Half-width of the hue bracket of a genotype: at most HUE_BRACKET, and
-    narrower for genotypes with a close neighbouring hue, such that the
-    brackets of different genotypes do not overlap.
+    Hue range (degrees, relative to the genotype hue) for the subtypes of a
+    genotype: up to HUE_BRACKET on either side, and up to a fraction of the hue
+    gap to the nearest genotype on that side, proportional to the number of
+    subtypes (`counts`) of the two genotypes, minus HUE_MARGIN.
     """
     hue = GENOTYPE_COLORS[genotype][0]
-    nearest = min(
-        min(abs(hue - other[0]), 360 - abs(hue - other[0]))
-        for g, other in GENOTYPE_COLORS.items() if g != genotype
-    )
-    return min(HUE_BRACKET, 0.45 * nearest)
+    limits = []
+    for direction in (-1, 1):
+        neighbour, gap = min(
+            ((g, (direction * (other[0] - hue)) % 360) for g, other in GENOTYPE_COLORS.items() if g != genotype),
+            key=lambda x: x[1],
+        )
+        total = counts.get(genotype, 0) + counts.get(neighbour, 0)
+        fraction = counts.get(genotype, 0) / total if total else 0.5
+        fraction = min(max(fraction, HUE_SPLIT_BOUNDS[0]), HUE_SPLIT_BOUNDS[1])
+        limits.append(min(HUE_BRACKET, fraction * gap - HUE_MARGIN))
+    return -limits[0], limits[1]
 
 
 def hex_to_oklab(color):
@@ -156,40 +165,56 @@ def delta_e(color, others):
     return min(100 * np.linalg.norm(lab - hex_to_oklab(other)) for other in others)
 
 
+def candidate_colors(genotype, counts):
+    """Grid of in-gamut candidate colors (hex, OKLab) for the subtypes of a genotype."""
+    hue = GENOTYPE_COLORS[genotype][0]
+    lower, upper = hue_range(genotype, counts)
+    candidates = {}
+    for dh in np.arange(lower, upper + 1e-9, 2):
+        for L in np.arange(SUBTYPE_LIGHTNESS_RANGE[0], SUBTYPE_LIGHTNESS_RANGE[1] + 1e-9, 0.025):
+            for C in SUBTYPE_CHROMA_LEVELS:
+                color = oklch_to_hex(L, C, (hue + dh) % 360)
+                candidates[color] = hex_to_oklab(color)
+    return candidates
+
+
 def subtype_colors(subtypes, genotype_colors):
     """
-    Assign subtype colors. For each subtype, the lightness levels are tried
-    starting from its position in the SUBTYPE_LIGHTNESS_OFFSETS cycle; the first
-    level that keeps the color at least MIN_DELTA_E_OTHER_GENOTYPE away from the
-    colors of other genotypes (and their subtypes), and MIN_DELTA_E_SIBLING
-    away from the previous subtype of the same genotype, is used.
+    Assign subtype colors by farthest point sampling: the first subtype of a
+    genotype gets the genotype color, each further subtype gets the candidate
+    color that is farthest from the colors already assigned to the genotype,
+    excluding candidates closer than MIN_DELTA_E_OTHER_GENOTYPE to the colors
+    assigned to other genotypes. Genotypes pick in turns (round robin), such
+    that genotypes with many subtypes aren't crowded out by those processed
+    before them.
     """
-    colors = {}
-    colors_by_genotype = {g: [c] for g, c in genotype_colors.items()}
-    for genotype, (hue, genotype_lightness, chroma) in GENOTYPE_COLORS.items():
-        members = [s for s in subtypes if s[0] == genotype]
-        n = len(members)
-        if n == 1:
-            colors[members[0]] = genotype_colors[genotype]
-            continue
-        bracket = hue_bracket(genotype)
-        for i, subtype in enumerate(members):
-            offset = -bracket + 2 * bracket * i / (n - 1)
-            other_colors = [c for g, cs in colors_by_genotype.items() if g != genotype for c in cs]
-            candidates = []
-            for k in range(len(SUBTYPE_LIGHTNESS_OFFSETS)):
-                lightness = genotype_lightness + SUBTYPE_LIGHTNESS_OFFSETS[(i + k) % len(SUBTYPE_LIGHTNESS_OFFSETS)]
-                lightness = min(max(lightness, SUBTYPE_LIGHTNESS_RANGE[0]), SUBTYPE_LIGHTNESS_RANGE[1])
-                candidates.append(oklch_to_hex(lightness, chroma, (hue + offset) % 360))
-            previous = colors_by_genotype[genotype][-1:] if i > 0 else []
-            color = next(
-                (c for c in candidates
-                 if delta_e(c, other_colors) >= MIN_DELTA_E_OTHER_GENOTYPE
-                 and delta_e(c, previous) >= MIN_DELTA_E_SIBLING),
-                max(candidates, key=lambda c: min(delta_e(c, other_colors), delta_e(c, previous))),
-            )
-            colors[subtype] = color
-            colors_by_genotype[genotype].append(color)
+    members = {
+        g: [s for s in subtypes if re.match(r"^\d+", s).group() == g]
+        for g in GENOTYPE_COLORS
+    }
+    counts = {g: len(m) for g, m in members.items()}
+    colors = {m[0]: genotype_colors[g] for g, m in members.items() if m}
+    assigned = [(g, hex_to_oklab(c)) for g, c in genotype_colors.items()]
+    state = {}
+    for g in GENOTYPE_COLORS:
+        hexes, labs = zip(*candidate_colors(g, counts).items())
+        labs = np.array(labs)
+        # distance of each candidate to the nearest color assigned to this genotype
+        nearest = 100 * np.linalg.norm(labs - hex_to_oklab(genotype_colors[g]), axis=1)
+        state[g] = (list(hexes), labs, nearest)
+
+    for k in range(1, max(len(m) for m in members.values())):
+        for g, m in members.items():
+            if k >= len(m):
+                continue
+            hexes, labs, nearest = state[g]
+            others = np.array([lab for og, lab in assigned if og != g])
+            to_others = 100 * np.min(np.linalg.norm(labs[:, None, :] - others[None, :, :], axis=2), axis=1)
+            score = np.where(to_others >= MIN_DELTA_E_OTHER_GENOTYPE, nearest, -np.inf)
+            i = int(np.argmax(score))
+            colors[m[k]] = hexes[i]
+            assigned.append((g, labs[i]))
+            state[g] = (hexes, labs, np.minimum(nearest, 100 * np.linalg.norm(labs - labs[i], axis=1)))
     return colors
 
 
