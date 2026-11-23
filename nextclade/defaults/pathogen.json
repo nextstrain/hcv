@@ -48,7 +48,7 @@
     },
     "mixedSites": {
       "enabled": true,
-      "mixedSitesThreshold": 75,
+      "mixedSitesThreshold": 125,
       "lengthScaling": {
         "minLength": 1000
       }
