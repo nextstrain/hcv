@@ -178,11 +178,12 @@ rule align:
 
 rule mask_bed:
     """
-    Write the gappy regions to mask (`placementMaskRanges` in the
-    pathogen.json, 0-based, end-exclusive) as a BED file
+    Write the gappy regions to mask (`extensions.nextclade.placement_mask_ranges`
+    in the Auspice config, 0-based, end-exclusive) as a BED file. `augur export`
+    copies the same ranges into the tree, where Nextclade reads them for placement.
     """
     input:
-        pathogen_json=config["files"]["pathogen_json"],
+        auspice_config=config["files"]["auspice_config"],
         reference=config["files"]["reference"],
     output:
         bed="results/mask.bed",
@@ -191,8 +192,8 @@ rule mask_bed:
         from Bio import SeqIO
 
         seq_id = SeqIO.read(input.reference, "fasta").id
-        with open(input.pathogen_json) as fh:
-            ranges = json.load(fh).get("placementMaskRanges", [])
+        with open(input.auspice_config) as fh:
+            ranges = json.load(fh).get("extensions", {}).get("nextclade", {}).get("placement_mask_ranges", [])
         with open(output.bed, "w") as fh:
             for r in ranges:
                 fh.write(f"{seq_id}\t{r['begin']}\t{r['end']}\n")
