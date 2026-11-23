@@ -20,7 +20,7 @@ Genotype and subtype are taken from the NCBI annotations (`ncbi_genotype`,
 1. Subsample near full length genomes (`subsample.min_length`) evenly across
    genotypes and subtypes (`augur filter --group-by genotype subtype --sequences-per-group`).
 2. Align the subsample with Nextclade and translate the CDSs.
-3. Mask the gappy regions listed in `placementMaskRanges` of the pathogen.json.
+3. Mask the gappy regions listed in `extensions.nextclade.placement_mask_ranges` of the Auspice config.
 4. Build the tree (`augur tree`, midpoint rooted by `augur refine`), reconstruct
    ancestral sequences and mutations (`augur ancestral`, using the Nextclade
    translations) and export to `auspice/tree.json`.
@@ -57,13 +57,15 @@ snakemake --cores 8 results/aligned.fasta
     --alignment results/aligned.fasta \
     --max-gap-fraction 0.3 \
     --keep-ranges 0-336 \
-    --pathogen-json defaults/pathogen.json
+    --auspice-config defaults/auspice_config.json
 ```
 
-This writes the ranges (0-based, end-exclusive) to `placementMaskRanges` in
-[defaults/pathogen.json][], which the workflow also uses for masking before
-tree building. `--keep-ranges 0-336` keeps the 5'UTR in the mask. Run without
-`--pathogen-json` to only print the ranges.
+This writes the ranges (0-based, end-exclusive) to
+`extensions.nextclade.placement_mask_ranges` in
+[defaults/auspice_config.json][]. The workflow uses them to mask the alignment
+before tree building, and `augur export` copies them into the tree, where
+Nextclade reads them for placement. `--keep-ranges 0-336` keeps the 5'UTR in
+the mask. Run without `--auspice-config` to only print the ranges.
 
 ## Colors
 
@@ -92,4 +94,5 @@ region of the sRGB gamut, some of its subtypes will still look similar.
 [scripts/generate-colors.py]: ./scripts/generate-colors.py
 [defaults/genotype_annotations.tsv]: ./defaults/genotype_annotations.tsv
 [defaults/include.txt]: ./defaults/include.txt
+[defaults/auspice_config.json]: ./defaults/auspice_config.json
 [defaults/pathogen.json]: ./defaults/pathogen.json

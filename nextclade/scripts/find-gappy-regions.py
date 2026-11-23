@@ -6,13 +6,15 @@ sequences have a gap.
 
 This is used during set-up of the dataset to determine the regions that are
 ignored during placement and masked before tree building (both from
-`placementMaskRanges` in pathogen.json). It is not part of the workflow itself.
+`extensions.nextclade.placement_mask_ranges` in the Auspice config). It is not
+part of the workflow itself.
 
 Ranges are reported in 0-based, end-exclusive reference coordinates, which is
-the convention of both `placementMaskRanges` and BED files.
+the convention of both `placement_mask_ranges` and BED files.
 
-With --pathogen-json, the ranges are written into the pathogen.json, replacing
-`placementMaskRanges`. Otherwise they are printed to STDOUT.
+With --auspice-config, the ranges are written into the Auspice config,
+replacing `extensions.nextclade.placement_mask_ranges`. Otherwise they are
+printed to STDOUT.
 """
 
 import argparse
@@ -36,7 +38,8 @@ def parse_args():
         help="Only report ranges of at least this length after merging (default: %(default)s)")
     parser.add_argument("--keep-ranges", type=str, nargs="*", default=[],
         help="Additional ranges to always include, as BEGIN-END (0-based, end-exclusive), e.g. 0-336 for the 5'UTR")
-    parser.add_argument("--pathogen-json", help="pathogen.json in which to replace `placementMaskRanges`")
+    parser.add_argument("--auspice-config",
+        help="Auspice config JSON in which to replace `extensions.nextclade.placement_mask_ranges`")
     return parser.parse_args()
 
 
@@ -72,12 +75,13 @@ def merge_ranges(ranges, distance):
     return merged
 
 
-def write_pathogen_json(path, ranges):
+def write_auspice_config(path, ranges):
     with open(path) as fh:
-        pathogen = json.load(fh)
-    pathogen["placementMaskRanges"] = [{"begin": b, "end": e} for b, e in ranges]
+        auspice_config = json.load(fh)
+    nextclade = auspice_config.setdefault("extensions", {}).setdefault("nextclade", {})
+    nextclade["placement_mask_ranges"] = [{"begin": b, "end": e} for b, e in ranges]
     with open(path, "w") as fh:
-        json.dump(pathogen, fh, indent=2)
+        json.dump(auspice_config, fh, indent=2)
         fh.write("\n")
 
 
@@ -95,9 +99,9 @@ def main():
     for b, e in ranges:
         print(f"  {b}-{e}\tlength {e - b}\tmean gap fraction {fractions[b:e].mean():.2f}", file=sys.stderr)
 
-    if args.pathogen_json:
-        write_pathogen_json(args.pathogen_json, ranges)
-        print(f"Wrote placementMaskRanges to {args.pathogen_json}", file=sys.stderr)
+    if args.auspice_config:
+        write_auspice_config(args.auspice_config, ranges)
+        print(f"Wrote placement_mask_ranges to {args.auspice_config}", file=sys.stderr)
     else:
         json.dump([{"begin": b, "end": e} for b, e in ranges], sys.stdout, indent=2)
         print()
