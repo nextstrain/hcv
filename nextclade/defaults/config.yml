@@ -53,7 +53,7 @@ tree:
 
 ancestral:
   inference: "joint"
-  genes: ["core", "E1", "E2", "p7", "NS2", "NS3", "NS4A", "NS4B", "NS5A", "NS5B"]
+  genes: ["F", "core", "E1", "E2", "p7", "NS2", "NS3", "NS4A", "NS4B", "NS5A", "NS5B"]
 
 # Tree-based annotation of genotypes/subtypes (scripts/assign-clades.py): for
 # each metadata field, the MRCA of each value is labeled and the value is
